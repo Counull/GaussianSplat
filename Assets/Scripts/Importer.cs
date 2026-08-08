@@ -16,6 +16,7 @@ public class Importer
 	byte[] rawDataCache;
 	public const int FLOAT_LEN = 4;
 	public GaussianData[] GaussianDatas { get; private set; }
+	public GpuGaussianData[] GpuGaussianDatas { get; private set; }
 	private int headerOffset;
 	private int _vertexCount;
 	private int _vertexStride;
@@ -109,6 +110,7 @@ public class Importer
 	private void ParseVertex(BufferedStream stream)
 	{
 		GaussianDatas ??= new GaussianData[_vertexCount];
+		GpuGaussianDatas ??= new GpuGaussianData[_vertexCount];
 		rawDataCache ??= new byte[_vertexStride];
 
 		for (var i = 0; i < _vertexCount; i++)
@@ -152,6 +154,8 @@ public class Importer
 				BitConverter.ToSingle(rawDataCache, _vertexOffset["rot_0"])
 			);
 			GaussianDatas[i].Rotation.Normalize(); //归一化四元数
+
+			GpuGaussianDatas[i] = new GpuGaussianData(GaussianDatas[i]);
 		}
 
 		float Sigmoid(float value)

@@ -149,6 +149,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlyRenderer
   assetName: peo-jwb_Splat-edit
+  material: {fileID: 2100000, guid: aa8b764f1a81a79488c51120e83ba034, type: 2}
   debug: 1
   debugSphere: {fileID: 1073003235495465487, guid: 28190bc4531d6364fb2529bfa510d0c7, type: 3}
 --- !u!4 &271571997
