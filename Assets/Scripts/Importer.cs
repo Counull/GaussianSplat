@@ -44,12 +44,16 @@ public class Importer
 			var b = stream.ReadByte();
 			if (b == -1) throw new Exception("Invalid header");
 			if (b == '\r') continue;
-			lineBytes.Add((byte) b);
-			if (b != '\n') continue;
-			var headerLine = Encoding.ASCII.GetString(lineBytes.ToArray()).Trim();
+			if (b != '\n')
+			{
+				lineBytes.Add((byte) b);
+				continue;
+			}
+
+			var headerLine = Encoding.ASCII.GetString(lineBytes.ToArray());
 			lineBytes.Clear();
 
-			if (ParseHeaderLine(headerLine))
+			if (!ParseHeaderLine(headerLine))
 			{
 				headerOffset = (int) stream.Position;
 				return;
@@ -67,16 +71,16 @@ public class Importer
 			          $"vertex cout:{_vertexCount}\n" +
 			          $"vertex stride:{_vertexStride}\n" +
 			          $"vertex offset: {JsonConvert.SerializeObject(_vertexOffset, Formatting.Indented)}\n");
-			return true;
+			return false;
 		}
 
 		var parts = line.Split(' ');
-		if (line.StartsWith("ply")) return false;
-		if (line.StartsWith("format")) return false;
+		if (line.StartsWith("ply")) return true;
+		if (line.StartsWith("format")) return true;
 		if (line.StartsWith("element vertex"))
 		{
 			_vertexCount = int.Parse(parts[2]);
-			return false;
+			return true;
 		}
 
 		if (parts[0] == "property" && parts[1] == "float")
@@ -99,7 +103,7 @@ public class Importer
 			_vertexStride += FLOAT_LEN;
 		}
 
-		return false;
+		return true;
 	}
 
 	private void ParseVertex(BufferedStream stream)
