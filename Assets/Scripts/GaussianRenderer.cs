@@ -8,6 +8,7 @@ using UnityEngine.Serialization;
 /// <summary>
 /// https://github.com/graphdeco-inria/gaussian-splatting
 /// </summary>
+[ExecuteAlways]
 public class GaussianRenderer : MonoBehaviour
 {
 	//我隐约记得这种写法在一些情况下会造成兼容性问题
@@ -38,18 +39,31 @@ public class GaussianRenderer : MonoBehaviour
 
 	private void Awake()
 	{
-		importer = new Importer(Path.Combine(Application.streamingAssetsPath, assetName + ".ply"));
-		if (debug)
+		if (debug && Application.isPlaying)
 		{
 			DebugRender();
 		}
-		else
-		{
-			CreateGaussianBuffer();
-			CreateShRestBuffer();
-			RenderPipelineManager.beginCameraRendering += CameraRender;
-		}
 	}
+
+	private void OnEnable()
+	{
+		importer = new Importer(Path.Combine(Application.streamingAssetsPath, assetName + ".ply"));
+		CreateGaussianBuffer();
+		CreateShRestBuffer();
+		RenderPipelineManager.beginCameraRendering += CameraRender;
+	}
+
+	private void OnDisable()
+	{
+		RenderPipelineManager.beginCameraRendering -= CameraRender;
+		gaussianBuffer?.Dispose();
+		gaussianBuffer = null;
+		sortedIndexBuffer?.Dispose();
+		sortedIndexBuffer = null;
+		shRestBuffer?.Dispose();
+		shRestBuffer = null;
+	}
+
 
 	/// <summary>
 	/// 用球体近似渲染 Debug专用
@@ -84,11 +98,7 @@ public class GaussianRenderer : MonoBehaviour
 
 	private void CameraRender(ScriptableRenderContext context, Camera camera)
 	{
-		if (camera.cameraType != CameraType.Game)
-			return;
-
 		SortGaussianIndices(camera);
-
 		renderProperties ??= new MaterialPropertyBlock();
 		renderProperties.Clear();
 		renderProperties.SetBuffer(GaussiansID, gaussianBuffer);
@@ -101,7 +111,8 @@ public class GaussianRenderer : MonoBehaviour
 			matProps = renderProperties,
 			layer = gameObject.layer,
 			shadowCastingMode = ShadowCastingMode.Off,
-			receiveShadows = false
+			receiveShadows = false,
+			worldBounds = new Bounds(transform.position, 1000f * Vector3.one)
 		};
 		Graphics.RenderPrimitives(
 			in renderParams,
@@ -138,14 +149,13 @@ public class GaussianRenderer : MonoBehaviour
 				cameraForward,
 				worldCenter - cameraPosition
 			);
-
-
+			
 			sortKeys[i] = -depth;
 			sortedIndices[i] = i;
 		}
 
 		Array.Sort(sortKeys, sortedIndices);
-		
+
 		sortedIndexBuffer ??= new GraphicsBuffer(
 			GraphicsBuffer.Target.Structured,
 			sortedIndices.Length,

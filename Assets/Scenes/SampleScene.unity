@@ -150,7 +150,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlyRenderer
   assetName: peo-jwb_Splat-edit
   material: {fileID: 2100000, guid: aa8b764f1a81a79488c51120e83ba034, type: 2}
-  debug: 1
+  debug: 0
   debugSphere: {fileID: 1073003235495465487, guid: 28190bc4531d6364fb2529bfa510d0c7, type: 3}
 --- !u!4 &271571997
 Transform:
@@ -161,7 +161,7 @@ Transform:
   m_GameObject: {fileID: 271571995}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -2.39, y: 1.82, z: -4.38}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
