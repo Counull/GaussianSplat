@@ -16,6 +16,7 @@
     "com.unity.xr.compositionlayers": "2.5.0",
     "com.unity.xr.interaction.toolkit": "3.5.1",
     "com.unity.xr.management": "4.5.4",
+    "com.unity.xr.mock-hmd": "1.5.0-exp.3",
     "com.unity.xr.openxr": "1.17.1",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.adaptiveperformance": "1.0.0",

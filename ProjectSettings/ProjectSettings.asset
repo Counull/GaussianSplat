@@ -831,7 +831,7 @@ PlayerSettings:
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
     Android: PICO_SPATIALIZER;USE_INPUT_SYSTEM_POSE_CONTROL;USE_STICK_CONTROL_THUMBSTICKS;ENABLE_PICO_OPENXR_SDK
-    Standalone: USE_INPUT_SYSTEM_POSE_CONTROL;USE_STICK_CONTROL_THUMBSTICKS
+    Standalone: USE_INPUT_SYSTEM_POSE_CONTROL;USE_STICK_CONTROL_THUMBSTICKS;PICO_SPATIALIZER;ENABLE_PICO_XR_SDK
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:
