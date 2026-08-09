@@ -179,15 +179,6 @@ Shader "Custom/GaussianSplatShader"
                 return mul(mul(linearTransform, sigma), transpose(linearTransform));
             }
 
-            float3x3 LinearPart(float4x4 transform)
-            {
-                return float3x3(
-                    transform._m00, transform._m01, transform._m02,
-                    transform._m10, transform._m11, transform._m12,
-                    transform._m20, transform._m21, transform._m22
-                );
-            }
-
             // Returns (a, b, c) for Sigma2D = [ a b ; b c ] in NDC units.
             float3 ProjectCovarianceToNdc(float3 centerVS, float3x3 sigmaCamera)
             {
@@ -233,11 +224,11 @@ Shader "Custom/GaussianSplatShader"
                 );
                 float3x3 sigmaWorld = TransformCovariance(
                     sigmaRotated,
-                    LinearPart(_SplatLocalToWorld)
+                   _SplatLocalToWorld
                 );
                 float3x3 sigmaCamera = TransformCovariance(
                     sigmaWorld,
-                    LinearPart(UNITY_MATRIX_V)
+                    UNITY_MATRIX_V
                 );
 
                 float3 centerVS =
