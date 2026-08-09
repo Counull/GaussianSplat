@@ -15,7 +15,11 @@ public class GaussianRenderer : MonoBehaviour
 	private static readonly int GaussianColorId = Shader.PropertyToID("_GaussianColor");
 	private static readonly int GaussiansID = Shader.PropertyToID("_Gaussians");
 	private static readonly int SortedIndicesID = Shader.PropertyToID("_SortedIndices");
+	private static readonly int ShRestID = Shader.PropertyToID("_ShRest");
+	private static readonly int ShRestVectorCountID = Shader.PropertyToID("_ShRestVectorCount");
+	private static readonly int ShRestFloatCountID = Shader.PropertyToID("_ShRestFloatCount");
 	private static readonly int SplatLocalToWorldID = Shader.PropertyToID("_SplatLocalToWorld");
+	private static readonly int SplatWorldToLocalID = Shader.PropertyToID("_SplatWorldToLocal");
 
 	[SerializeField] private string assetName = "";
 	[SerializeField] private Material material;
@@ -35,6 +39,8 @@ public class GaussianRenderer : MonoBehaviour
 
 	private float[] sortKeys;
 	private int[] sortedIndices;
+	private int shRestVectorCount;
+	private int shRestFloatCount;
 
 
 	private void Awake()
@@ -103,7 +109,11 @@ public class GaussianRenderer : MonoBehaviour
 		renderProperties.Clear();
 		renderProperties.SetBuffer(GaussiansID, gaussianBuffer);
 		renderProperties.SetBuffer(SortedIndicesID, sortedIndexBuffer);
+		renderProperties.SetBuffer(ShRestID, shRestBuffer);
+		renderProperties.SetInt(ShRestVectorCountID, shRestVectorCount);
+		renderProperties.SetInt(ShRestFloatCountID, shRestFloatCount);
 		renderProperties.SetMatrix(SplatLocalToWorldID, transform.localToWorldMatrix);
+		renderProperties.SetMatrix(SplatWorldToLocalID, transform.worldToLocalMatrix);
 
 		var renderParams = new RenderParams(material)
 		{
@@ -168,7 +178,8 @@ public class GaussianRenderer : MonoBehaviour
 	/// </summary>
 	public void CreateShRestBuffer()
 	{
-		var shRestVectorCount = importer.GaussianDatas[0].RestVectorCount;
+		shRestFloatCount = importer.GaussianDatas[0].Rest.Length;
+		shRestVectorCount = importer.GaussianDatas[0].RestVectorCount;
 		var packedRest = new float4 [importer.GaussianDatas.Length * shRestVectorCount];
 		for (int i = 0; i < importer.GaussianDatas.Length; i++)
 		{

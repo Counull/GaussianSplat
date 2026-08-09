@@ -54,10 +54,100 @@ Shader "Custom/GaussianSplatShader"
             StructuredBuffer<GpuGaussian> _Gaussians;
             StructuredBuffer<int> _SortedIndices;
             StructuredBuffer<float4> _ShRest;
+            int _ShRestVectorCount;
+            int _ShRestFloatCount;
             float4x4 _SplatLocalToWorld;
+            float4x4 _SplatWorldToLocal;
 
-            // The Gaussian is not compact at alpha = 0, so this must stay above zero.
+  
             static const float AlphaCut = 0.01;
+
+            static const float SH_C0 = 0.28209479177387814;
+            static const float SH_C1 = 0.4886025119029199;
+            static const float SH_C2[5] =
+            {
+                1.0925484305920792,
+                -1.0925484305920792,
+                0.31539156525252005,
+                -1.0925484305920792,
+                0.5462742152960396
+            };
+            static const float SH_C3[7] =
+            {
+                -0.5900435899266435,
+                2.890611442640554,
+                -0.4570457994644658,
+                0.3731763325901154,
+                -0.4570457994644658,
+                1.445305721320277,
+                -0.5900435899266435
+            };
+
+            float LoadShRest(uint gaussianId, int restIndex)
+            {
+                uint packedIndex = gaussianId * (uint)_ShRestVectorCount
+                    + (uint)(restIndex / 4);
+                float4 packed = _ShRest[packedIndex];
+                return packed[restIndex % 4];
+            }
+
+            float3 LoadShCoefficient(uint gaussianId, int shCoefficientIndex)
+            {
+                int coefficientsPerChannel = _ShRestFloatCount / 3;
+                int restCoefficientIndex = shCoefficientIndex - 1;
+
+                return float3(
+                    LoadShRest(gaussianId, restCoefficientIndex),
+                    LoadShRest(gaussianId, coefficientsPerChannel + restCoefficientIndex),
+                    LoadShRest(gaussianId, 2 * coefficientsPerChannel + restCoefficientIndex)
+                );
+            }
+
+            float3 EvaluateShColor(uint gaussianId, float3 dc, float3 direction)
+            {
+                float x = direction.x;
+                float y = direction.y;
+                float z = direction.z;
+                float3 result = SH_C0 * dc;
+                int coefficientsPerChannel = _ShRestFloatCount / 3;
+
+                if (coefficientsPerChannel >= 3)
+                {
+                    result += -SH_C1 * y * LoadShCoefficient(gaussianId, 1);
+                    result += SH_C1 * z * LoadShCoefficient(gaussianId, 2);
+                    result += -SH_C1 * x * LoadShCoefficient(gaussianId, 3);
+                }
+
+                if (coefficientsPerChannel >= 8)
+                {
+                    float xx = x * x;
+                    float yy = y * y;
+                    float zz = z * z;
+                    float xy = x * y;
+                    float yz = y * z;
+                    float xz = x * z;
+
+                    result += SH_C2[0] * xy * LoadShCoefficient(gaussianId, 4);
+                    result += SH_C2[1] * yz * LoadShCoefficient(gaussianId, 5);
+                    result += SH_C2[2] * (2.0 * zz - xx - yy) * LoadShCoefficient(gaussianId, 6);
+                    result += SH_C2[3] * xz * LoadShCoefficient(gaussianId, 7);
+                    result += SH_C2[4] * (xx - yy) * LoadShCoefficient(gaussianId, 8);
+
+                    if (coefficientsPerChannel >= 15)
+                    {
+                        result += SH_C3[0] * y * (3.0 * xx - yy) * LoadShCoefficient(gaussianId, 9);
+                        result += SH_C3[1] * xy * z * LoadShCoefficient(gaussianId, 10);
+                        result += SH_C3[2] * y * (4.0 * zz - xx - yy) * LoadShCoefficient(gaussianId, 11);
+                        result += SH_C3[3] * z * (2.0 * zz - 3.0 * xx - 3.0 * yy)
+                            * LoadShCoefficient(gaussianId, 12);
+                        result += SH_C3[4] * x * (4.0 * zz - xx - yy) * LoadShCoefficient(gaussianId, 13);
+                        result += SH_C3[5] * z * (xx - yy) * LoadShCoefficient(gaussianId, 14);
+                        result += SH_C3[6] * x * (xx - 3.0 * yy) * LoadShCoefficient(gaussianId, 15);
+                    }
+                }
+
+                return max(result + 0.5, 0.0);
+            }
 
             float3x3 QuaternionToRotationMatrix(float4 q)
             {
@@ -104,9 +194,7 @@ Shader "Custom/GaussianSplatShader"
                 float depth = max(-centerVS.z, 1e-4);
                 float fx = UNITY_MATRIX_P._m00;
                 float fy = UNITY_MATRIX_P._m11;
-
-                // The covariance is expressed in Unity View Space (x, y, z),
-                // where points in front of the camera have z < 0.
+                
                 float3 ju = float3(
                     fx / depth,
                     0.0,
@@ -166,6 +254,15 @@ Shader "Custom/GaussianSplatShader"
                 float radiusSquared = 2.0 * log(max(opacity, AlphaCut) / AlphaCut);
                 float2 radiusNDC = sqrt(radiusSquared * float2(a, c));
 
+                float3 cameraLS = mul(
+                    _SplatWorldToLocal,
+                    float4(GetCameraPositionWS(), 1.0)
+                ).xyz;
+                float3 shDirectionDelta = gaussian.positionOpacity.xyz - cameraLS;
+                float3 shDirection = shDirectionDelta
+                    * rsqrt(max(dot(shDirectionDelta, shDirectionDelta), 1e-12));
+                float3 shColor = EvaluateShColor(gaussianId, gaussian.dc.xyz, shDirection);
+
                 Varyings OUT;
                 float4 centerHCS = TransformWorldToHClip(centerWS);
                 OUT.splatOffsetNDC = corner * radiusNDC;
@@ -173,7 +270,7 @@ Shader "Custom/GaussianSplatShader"
                 OUT.positionHCS.xy += OUT.splatOffsetNDC * centerHCS.w;
                 OUT.conic = float3(c, -b, a) / determinant;
                 OUT.colorOpacity = float4(
-                    0.5 + 0.2820947918 * gaussian.dc.xyz,
+                    shColor,
                     opacity
                 );
                 return OUT;
